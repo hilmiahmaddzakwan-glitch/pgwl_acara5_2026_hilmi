@@ -215,5 +215,81 @@ map.on('draw:created', function(e) {
 
 	drawnItems.addLayer(layer);
 });
-    </script>
+
+// Inisialisasi layer GeoJSON
+var points = L.geoJSON(null, {
+    onEachFeature: function(feature, layer) {
+
+        var popup_content = "Nama: " + feature.properties.name + "<br>" +
+                            "Deskripsi: " + feature.properties.description + "<br>" +
+                            "Dibuat: " + feature.properties.created_at;
+
+        layer.on({
+            click: function(e) {
+                layer.bindPopup(popup_content).openPopup();
+            }
+        });
+    }
+});
+
+// Ambil data
+$.getJSON("{{ route('api.geojson_points') }}", function(data) {
+    console.log(data); // DEBUG WAJIB
+    points.addData(data);
+    // dihapus saja
+});
+
+var polylines = L.geoJSON(null, {
+    style: {
+        color: "blue",
+        weight: 3
+    },
+    onEachFeature: function(feature, layer) {
+        var popup_content = "Nama: " + feature.properties.name + "<br>" +
+                            "Deskripsi: " + feature.properties.description;
+
+        layer.bindPopup(popup_content);
+    }
+});
+
+$.getJSON("{{ route('api.geojson_polylines') }}", function(data) {
+    console.log("polyline:", data);
+    polylines.addData(data);
+    // dihapus saja
+});
+
+var polygons = L.geoJSON(null, {
+    style: {
+        color: "green",
+        fillOpacity: 0.5
+    },
+    onEachFeature: function(feature, layer) {
+        var popup_content = "Nama: " + feature.properties.name + "<br>" +
+                            "Deskripsi: " + feature.properties.description;
+
+        layer.bindPopup(popup_content);
+    }
+});
+
+$.getJSON("{{ route('api.geojson_polygons') }}", function(data) {
+    console.log("polygon:", data);
+    polygons.addData(data);
+    // dihapus saja
+});
+
+var overlayMaps = {
+    "Points": points,
+    "Polylines": polylines,
+    "Polygons": polygons
+};
+
+L.control.layers(null, overlayMaps, {
+    collapsed: false,
+    position: 'topright'
+}).addTo(map);
+
+points.addTo(map);
+polylines.addTo(map);
+polygons.addTo(map);
+</script>
 @endsection
