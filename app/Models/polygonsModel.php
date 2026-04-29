@@ -17,6 +17,7 @@ class PolygonsModel extends Model
             ST_AsGeoJSON(geom) as geojson,
             name,
             description,
+            image,
             created_at,
             updated_at
         "))->get();
@@ -34,6 +35,7 @@ class PolygonsModel extends Model
                     'id' => $p->id,
                     'name' => $p->name,
                     'description' => $p->description,
+                    'image' => $p->image,
                     'created_at' => $p->created_at,
                     'updated_at' => $p->updated_at,
                 ]

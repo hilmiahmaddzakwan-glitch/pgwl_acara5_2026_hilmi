@@ -1,295 +1,253 @@
 @extends('layouts.template')
+
 @section('styles')
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 
-    <!-- Leaflet Draw -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
-
-    <style>
-        #map {
-            height: calc(100vh - 56px); /* Mengurangi tinggi navbar */
-        }
-    </style>
+<style>
+    #map {
+        height: calc(100vh - 56px);
+    }
+</style>
 @endsection
 
-<body>
+@section('content')
+<div id="map"></div>
 
-    @section('content')
-    <!-- Container untuk Peta -->
-    <div id="map"></div>
-
-    <!-- Modal form input point -->
-    <div class="modal" tabindex="-1" id="modalInputPoint">
+{{-- ================= POINT MODAL ================= --}}
+<div class="modal fade" id="modalInputPoint">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Input Point</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <form action="{{ route('points.store') }}" method="POST" enctype="multipart/form-data" class="modal-content shadow">
+      @csrf
+
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">📍 Input Data Point</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('points.store') }}" method="post">
-        @csrf
+
       <div class="modal-body">
+
         <div class="mb-3">
-  <label for="name" class="form-label">Name</label>
-  <input type="text" class="form-control" id="name" name="name" placeholder="Fill in the name">
-</div>
-<div class="mb-3">
-  <label for="description" class="form-label">Description</label>
-  <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-</div>
-<div class="mb-3">
-  <label for="geometry_point" class="form-label">Geometry</label>
-  <textarea class="form-control" id="geometry_point" name="geometry_point" rows="3"></textarea>
-</div>
+          <label class="form-label fw-semibold">Nama Lokasi</label>
+          <input type="text" name="name" class="form-control" placeholder="Contoh: Kampus UGM">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Deskripsi</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Masukkan deskripsi singkat lokasi"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Geometry (Otomatis dari peta)</label>
+          <textarea id="geometry_point" name="geometry_point" class="form-control" rows="2" readonly></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Upload Gambar</label>
+          <input type="file" name="image" class="form-control" onchange="previewImage(event,'preview_point')">
+          <small class="text-muted">Format: JPG/PNG, maksimal 2MB</small>
+          <img id="preview_point" class="img-thumbnail mt-2" width="200" style="display:none;">
+        </div>
+
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">💾 Simpan</button>
       </div>
-      </form>
-    </div>
+
+    </form>
   </div>
 </div>
 
-{{-- Modal form input polyline --}}
-<div class="modal" tabindex="-1" id="modalInputPolyline">
+{{-- ================= POLYLINE MODAL ================= --}}
+<div class="modal fade" id="modalInputPolyline">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Input Polyline</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <form action="{{ route('polylines.store') }}" method="POST" enctype="multipart/form-data" class="modal-content shadow">
+      @csrf
+
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">📏 Input Data Polyline</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('polylines.store') }}" method="post">
-        @csrf
+
       <div class="modal-body">
+
         <div class="mb-3">
-  <label for="name" class="form-label">Name</label>
-  <input type="text" class="form-control" id="name" name="name" placeholder="Fill in the name">
-</div>
-<div class="mb-3">
-  <label for="description" class="form-label">Description</label>
-  <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-</div>
-<div class="mb-3">
-  <label for="geometry_polyline" class="form-label">Geometry</label>
-  <textarea class="form-control" id="geometry_polyline" name="geometry_polyline" rows="3"></textarea>
-</div>
+          <label class="form-label fw-semibold">Nama Jalur</label>
+          <input type="text" name="name" class="form-control" placeholder="Contoh: Jalan Malioboro">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Deskripsi</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Deskripsi jalur"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Geometry (Otomatis)</label>
+          <textarea id="geometry_polyline" name="geometry_polyline" class="form-control" rows="2" readonly></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Upload Gambar</label>
+          <input type="file" name="image" class="form-control" onchange="previewImage(event,'preview_polyline')">
+          <img id="preview_polyline" class="img-thumbnail mt-2" width="200" style="display:none;">
+        </div>
+
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">💾 Simpan</button>
       </div>
-      </form>
-    </div>
+
+    </form>
   </div>
 </div>
 
-{{-- Modal form input polygon --}}
-<div class="modal" tabindex="-1" id="modalInputPolygon">
+{{-- ================= POLYGON MODAL ================= --}}
+<div class="modal fade" id="modalInputPolygon">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Input Polygon</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <form action="{{ route('polygons.store') }}" method="POST" enctype="multipart/form-data" class="modal-content shadow">
+      @csrf
+
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">🗺️ Input Data Polygon</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('polygons.store') }}" method="post">
-        @csrf
+
       <div class="modal-body">
+
         <div class="mb-3">
-  <label for="name" class="form-label">Name</label>
-  <input type="text" class="form-control" id="name" name="name" placeholder="Fill in the name">
-</div>
-<div class="mb-3">
-  <label for="description" class="form-label">Description</label>
-  <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-</div>
-<div class="mb-3">
-  <label for="geometry_polygon" class="form-label">Geometry</label>
-  <textarea class="form-control" id="geometry_polygon" name="geometry_polygon" rows="3"></textarea>
-</div>
+          <label class="form-label fw-semibold">Nama Area</label>
+          <input type="text" name="name" class="form-control" placeholder="Contoh: Area Kampus">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Deskripsi</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Deskripsi area"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Geometry (Otomatis)</label>
+          <textarea id="geometry_polygon" name="geometry_polygon" class="form-control" rows="2" readonly></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Upload Gambar</label>
+          <input type="file" name="image" class="form-control" onchange="previewImage(event,'preview_polygon')">
+          <img id="preview_polygon" class="img-thumbnail mt-2" width="200" style="display:none;">
+        </div>
+
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">💾 Simpan</button>
       </div>
-      </form>
-    </div>
+
+    </form>
   </div>
 </div>
 
 @endsection
 
-   @section('scripts')
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+@section('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@terraformer/wkt"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-    <!-- Leaflet Draw JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script>
+// ================= PREVIEW IMAGE =================
+function previewImage(event, targetId){
+    const img = document.getElementById(targetId);
+    img.src = URL.createObjectURL(event.target.files[0]);
+    img.style.display = 'block';
+}
 
-    <!--Terraformer JS-->
-    <script src="https://unpkg.com/@terraformer/wkt"></script>
+// ================= MAP INIT =================
+const map = L.map('map').setView([-7.7956,110.3695],13);
 
-    <!--jQuery-->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    <script>
-        // Koordinat Yogyakarta, Indonesia
-        const yogyakarta = [-7.7956, 110.3695];
-
-        // Inisialisasi peta
-        const map = L.map('map').setView(yogyakarta, 13);
-
-        // Menambahkan tile layer dari OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-
-        /* Digitize Function */
-var drawnItems = new L.FeatureGroup();
+// ================= DRAW =================
+const drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
-var drawControl = new L.Control.Draw({
-	draw: {
-		position: 'topleft',
-		polyline: true,
-		polygon: true,
-		rectangle: true,
-		circle: false,
-		marker: true,
-		circlemarker: false
-	},
-	edit: false
-});
-
-map.addControl(drawControl);
-
-map.on('draw:created', function(e) {
-	var type = e.layerType,
-		layer = e.layer;
-
-	console.log(type);
-
-	var drawnJSONObject = layer.toGeoJSON();
-	var objectGeometry = Terraformer.geojsonToWKT(drawnJSONObject.geometry);
-
-	console.log(drawnJSONObject);
-	console.log(objectGeometry);
-
-	if (type === 'polyline') {
-        //Set value geometry to geometry_polyline textarea
-        $('#geometry_polyline').val(objectGeometry);
-        //Show Modal Input Polyline
-        $('#modalInputPolyline').modal('show');
-        //Modal dismiss reload page
-        $('#modalInputPolyline').on('hidden.bs.modal', function () {
-            location.reload();
-        });
-
-	} else if (type === 'polygon' || type === 'rectangle') {
-		//Set value geometry to geometry_polygon textarea
-        $('#geometry_polygon').val(objectGeometry);
-        //Show Modal Input Polygon
-        $('#modalInputPolygon').modal('show');
-        //Modal dismiss reload page
-        $('#modalInputPolygon').on('hidden.bs.modal', function () {
-            location.reload();
-        });
-	} else if (type === 'marker') {
-		console.log("Create " + type);
-        //Set value geometry to geometry_point textarea
-        $('#geometry_point').val(objectGeometry);
-        //Show Modal Input Point
-        $('#modalInputPoint').modal('show');
-        //Modal dismiss reload page
-        $('#modalInputPoint').on('hidden.bs.modal', function () {
-            location.reload();
-        });
-	} else {
-		console.log('__undefined__');
-	}
-
-	drawnItems.addLayer(layer);
-});
-
-// Inisialisasi layer GeoJSON
-var points = L.geoJSON(null, {
-    onEachFeature: function(feature, layer) {
-
-        var popup_content = "Nama: " + feature.properties.name + "<br>" +
-                            "Deskripsi: " + feature.properties.description + "<br>" +
-                            "Dibuat: " + feature.properties.created_at;
-
-        layer.on({
-            click: function(e) {
-                layer.bindPopup(popup_content).openPopup();
-            }
-        });
+map.addControl(new L.Control.Draw({
+    draw:{
+        polyline:true,
+        polygon:true,
+        rectangle:true,
+        marker:true,
+        circle:false,
+        circlemarker:false
     }
-});
+}));
 
-// Ambil data
-$.getJSON("{{ route('api.geojson_points') }}", function(data) {
-    console.log(data); // DEBUG WAJIB
-    points.addData(data);
-    // dihapus saja
-});
+map.on('draw:created', function(e){
+    const type = e.layerType.toLowerCase();
+    const layer = e.layer;
 
-var polylines = L.geoJSON(null, {
-    style: {
-        color: "blue",
-        weight: 3
-    },
-    onEachFeature: function(feature, layer) {
-        var popup_content = "Nama: " + feature.properties.name + "<br>" +
-                            "Deskripsi: " + feature.properties.description;
+    const geojson = layer.toGeoJSON();
+    const wkt = Terraformer.geojsonToWKT(geojson.geometry);
 
-        layer.bindPopup(popup_content);
+    if(type === 'polyline'){
+        document.getElementById('geometry_polyline').value = wkt;
+        new bootstrap.Modal(document.getElementById('modalInputPolyline')).show();
     }
-});
-
-$.getJSON("{{ route('api.geojson_polylines') }}", function(data) {
-    console.log("polyline:", data);
-    polylines.addData(data);
-    // dihapus saja
-});
-
-var polygons = L.geoJSON(null, {
-    style: {
-        color: "green",
-        fillOpacity: 0.5
-    },
-    onEachFeature: function(feature, layer) {
-        var popup_content = "Nama: " + feature.properties.name + "<br>" +
-                            "Deskripsi: " + feature.properties.description;
-
-        layer.bindPopup(popup_content);
+    else if(type === 'polygon' || type === 'rectangle'){
+        document.getElementById('geometry_polygon').value = wkt;
+        new bootstrap.Modal(document.getElementById('modalInputPolygon')).show();
     }
+    else if(type === 'marker'){
+        document.getElementById('geometry_point').value = wkt;
+        new bootstrap.Modal(document.getElementById('modalInputPoint')).show();
+    }
+
+    drawnItems.addLayer(layer);
 });
 
-$.getJSON("{{ route('api.geojson_polygons') }}", function(data) {
-    console.log("polygon:", data);
-    polygons.addData(data);
-    // dihapus saja
+// ================= GEOJSON =================
+function popupContent(feature){
+    return `
+        Nama: ${feature.properties.name}<br>
+        Deskripsi: ${feature.properties.description}<br>
+        ${feature.properties.image
+            ? `<img src="/storage/images/${feature.properties.image}" width="200">`
+            : 'Tidak ada gambar'}
+    `;
+}
+
+const points = L.geoJSON(null,{
+    onEachFeature:(f,l)=>l.bindPopup(popupContent(f))
 });
 
-var overlayMaps = {
-    "Points": points,
-    "Polylines": polylines,
-    "Polygons": polygons
-};
+const polylines = L.geoJSON(null,{
+    style:{color:'blue'},
+    onEachFeature:(f,l)=>l.bindPopup(popupContent(f))
+});
 
-L.control.layers(null, overlayMaps, {
-    collapsed: false,
-    position: 'topright'
-}).addTo(map);
+const polygons = L.geoJSON(null,{
+    style:{color:'green'},
+    onEachFeature:(f,l)=>l.bindPopup(popupContent(f))
+});
+
+// ================= LOAD DATA =================
+$.getJSON("{{ route('api.geojson_points') }}", data => points.addData(data));
+$.getJSON("{{ route('api.geojson_polylines') }}", data => polylines.addData(data));
+$.getJSON("{{ route('api.geojson_polygons') }}", data => polygons.addData(data));
 
 points.addTo(map);
 polylines.addTo(map);
 polygons.addTo(map);
+
+L.control.layers(null,{
+    Points:points,
+    Polylines:polylines,
+    Polygons:polygons
+}).addTo(map);
+
 </script>
 @endsection

@@ -52,10 +52,25 @@ class PolylinesController extends Controller
         ]
     );
 
+    ///Create directory if not exist
+    if (!is_dir('storage/images')) {
+   mkdir('./storage/images', 0777);
+}
+
+// Get the upload image
+if ($request->hasFile('image')) {
+  $image = $request->file('image');
+  $name_image = time() . "_point." . strtolower($image->getClientOriginalExtension());
+  $image->move('storage/images', $name_image);
+} else {
+  $name_image = null;
+}
+
         $data = [
             'name' => $request->name,
             'description' => $request->description,
             'geom' => $request->geometry_polyline,
+            'image' => $name_image
         ];
 
         // Perbaiki: gunakan $this->polylinesModel (bukan $this->polylines)

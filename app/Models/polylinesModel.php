@@ -17,6 +17,7 @@ class PolylinesModel extends Model
             ST_AsGeoJSON(geom) as geojson,
             name,
             description,
+            image,
             created_at,
             updated_at
         "))->get();
@@ -34,6 +35,7 @@ class PolylinesModel extends Model
                     'id' => $l->id,
                     'name' => $l->name,
                     'description' => $l->description,
+                    'image' => $l->image,
                     'created_at' => $l->created_at,
                     'updated_at' => $l->updated_at,
                 ]
