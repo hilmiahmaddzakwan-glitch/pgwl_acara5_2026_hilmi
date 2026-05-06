@@ -2,116 +2,142 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PolylinesModel; // Perbaiki: huruf kapital di awal (sesuai standar Laravel)
+use App\Models\polylinesModel;
 use Illuminate\Http\Request;
 
 class PolylinesController extends Controller
 {
-    protected $polylinesModel; // Deklarasikan property dengan benar
-
     public function __construct()
     {
-        $this->polylinesModel = new PolylinesModel(); // Perbaiki: huruf kapital P
+        $this->polylines = new polylinesModel();
     }
 
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // Validasi input
-    $request->validate(
-        [
-            'geometry_polyline' => 'required',
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-        ],
-        [
-            'geometry_polyline.required' => 'Field geometry polyline harus diisi.',
-            'name.required' => 'Field name harus diisi.',
-            'name.string' => 'Field name harus berupa string.',
-            'name.max' => 'Field name tidak boleh lebih dari 255 karakter.',
-            'description.string' => 'Field description harus berupa string.',
-            'description.required' => 'Field description harus diisi.'
-        ]
-    );
+        $request->validate(
+            [
+                'geometry' => 'required',
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            ]
+        );
 
-    ///Create directory if not exist
-    if (!is_dir('storage/images')) {
-   mkdir('./storage/images', 0777);
-}
+        if (!is_dir('storage/images')) {
+            mkdir('./storage/images', 0777, true);
+        }
 
-// Get the upload image
-if ($request->hasFile('image')) {
-  $image = $request->file('image');
-  $name_image = time() . "_point." . strtolower($image->getClientOriginalExtension());
-  $image->move('storage/images', $name_image);
-} else {
-  $name_image = null;
-}
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $name_image = time() . "_polyline." . strtolower($image->getClientOriginalExtension());
+            $image->move('storage/images', $name_image);
+        } else {
+            $name_image = null;
+        }
 
         $data = [
             'name' => $request->name,
             'description' => $request->description,
-            'geom' => $request->geometry_polyline,
+            'geom' => $request->geometry,
             'image' => $name_image
         ];
 
-        // Perbaiki: gunakan $this->polylinesModel (bukan $this->polylines)
-        if (!$this->polylinesModel->create($data)) {
-            //Kembali ke halaman peta setelah menyimpan data
+        if (!$this->polylines->create($data)) {
             return redirect()->route('peta')->with('error', 'Gagal menyimpan data polyline!');
         }
 
-        // Kembali ke halaman peta setelah menyimpan data
-        return redirect()->route('peta')->with('success', 'Data polyline berhasil disimpan.')   ;
+        return redirect()->route('peta')->with('success', 'Data polyline berhasil disimpan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+        ]);
+
+        $polyline = $this->polylines->find($id);
+
+        if (!$polyline) {
+            return redirect()->route('peta')->with('error', 'Data polyline tidak ditemukan!');
+        }
+
+        $data = [
+            'name' => $request->name,
+            'description' => $request->description,
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($polyline->image && file_exists('storage/images/' . $polyline->image)) {
+                unlink('storage/images/' . $polyline->image);
+            }
+
+            $image = $request->file('image');
+            $name_image = time() . "_polyline." . strtolower($image->getClientOriginalExtension());
+            $image->move('storage/images', $name_image);
+            $data['image'] = $name_image;
+        }
+
+        if (!$this->polylines->where('id', $id)->update($data)) {
+            return redirect()->route('peta')->with('error', 'Gagal mengupdate data polyline!');
+        }
+
+        return redirect()->route('peta')->with('success', 'Data polyline berhasil diupdate.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        try {
+            $polyline = $this->polylines->find($id);
+
+            if (!$polyline) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data polyline tidak ditemukan!'
+                ], 404);
+            }
+
+            if ($polyline->image && file_exists('storage/images/' . $polyline->image)) {
+                unlink('storage/images/' . $polyline->image);
+            }
+
+            $this->polylines->where('id', $id)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data polyline berhasil dihapus!'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function geojson()
+    {
+        $polylines = $this->polylines->all();
+
+        $features = [];
+        foreach ($polylines as $polyline) {
+            $features[] = [
+                'type' => 'Feature',
+                'geometry' => json_decode($polyline->geom, true),
+                'properties' => [
+                    'id' => $polyline->id,
+                    'name' => $polyline->name,
+                    'description' => $polyline->description,
+                    'image' => $polyline->image
+                ]
+            ];
+        }
+
+        return response()->json([
+            'type' => 'FeatureCollection',
+            'features' => $features
+        ]);
     }
 }
