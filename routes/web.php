@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Route untuk halaman utama (Home)
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', [PageController::class, 'landingpage'])->name('home');
 
-// Route untuk halaman peta
-Route::get('/peta', [PageController::class, 'peta'])->name('peta');
+// Route halaman peta dengan middleware login
+Route::get('/peta', [PageController::class, 'peta'])
+    ->middleware('auth')
+    ->name('peta');
 
 // Route untuk halaman tabel
 Route::get('/tabel', [PageController::class, 'tabel'])->name('tabel');
